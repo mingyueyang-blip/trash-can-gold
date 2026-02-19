@@ -1,0 +1,30 @@
+{
+  "name": "炼金炉 · The Alchemy Cube",
+  "short_name": "炼金炉",
+  "description": "只管投喂，剩下的交给 AI。个人知识中转站。",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#E0C3FC",
+  "theme_color": "#805ad5",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
