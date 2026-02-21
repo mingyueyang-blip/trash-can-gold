@@ -21,8 +21,8 @@ export async function captureFragment(
   const now = new Date().toISOString();
 
   let title: string | undefined;
-  let contentToStore: string;
-  let suggestedTags: { name: string }[];
+  let contentToStore: string = "";
+  let suggestedTags: { name: string }[] = [];
 
   let warning: string | undefined;
 

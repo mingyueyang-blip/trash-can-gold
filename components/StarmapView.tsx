@@ -307,14 +307,14 @@ export function StarmapView({
               });
               ctx.restore();
             })
-            .graphData({ nodes, links })
-            .cooldownTime(2000);
+            .graphData({ nodes, links });
+          (graph as FG).cooldownTime(2000);
 
           const charge = (graph as FG).d3Force("charge") as { strength?: (v: number) => void } | undefined;
           if (charge && typeof charge.strength === "function") charge.strength(CHARGE_STRENGTH);
           (graph as FG).d3Force("collide", forceCollide(COLLIDE_RADIUS));
 
-          graphRef.current = graph as typeof graphRef.current;
+          graphRef.current = graph as unknown as typeof graphRef.current;
 
           /** 自定义点击：点字或点圆（约 36 单位内）都打开右侧栏 */
           removeClickRef.current?.();

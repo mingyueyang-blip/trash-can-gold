@@ -77,6 +77,8 @@ export function RefineStarMap({
         nodeColor: (fn: (n: Node) => string) => FG;
         nodeVisibility: (fn: (n: Node) => boolean) => FG;
         nodeLabel: (fn: (n: Node) => string) => FG;
+        linkCanvasObjectMode: (mode: string) => FG;
+        linkCanvasObject: (fn: (link: { source: Node & { x: number; y: number }; target: Node & { x: number; y: number } }, ctx: CanvasRenderingContext2D, globalScale: number) => void) => FG;
         linkColor: (fn: () => string) => FG;
         linkWidth: (w: number) => FG;
         graphData: (d?: { nodes: Node[]; links: Link[] }) => { nodes: Node[]; links: Link[] };
@@ -146,7 +148,7 @@ export function RefineStarMap({
         }
         (graph as FG).d3Force("collide", forceCollide(COLLIDE_RADIUS));
 
-        graphRef.current = graph as typeof graphRef.current;
+        graphRef.current = graph as unknown as typeof graphRef.current;
       } else {
         const g = graphRef.current;
         g.graphData({ nodes, links });
