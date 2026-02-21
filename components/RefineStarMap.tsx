@@ -55,11 +55,11 @@ export function RefineStarMap({
 
     const el = containerRef.current;
     const centerId = "__current__";
-    const nodes: Node[] = [
-      { id: centerId, name: currentTitle || "当前笔记", nodeType: "center" },
+    const nodes = [
+      { id: centerId, name: currentTitle || "当前笔记", nodeType: "center" as const },
       ...tags.map((tag, i) => ({ id: `tag-${i}`, name: tag, nodeType: "tag" as const })),
       ...refTitles.map((title, i) => ({ id: `ref-${i}`, name: title, nodeType: "ref" as const })),
-    ].filter((n) => n.name?.trim());
+    ].filter((n) => n.name?.trim()) as Node[];
     const links: Link[] = [
       ...tags.map((_, i) => ({ source: centerId, target: `tag-${i}` })),
       ...refTitles.map((_, i) => ({ source: centerId, target: `ref-${i}` })),
