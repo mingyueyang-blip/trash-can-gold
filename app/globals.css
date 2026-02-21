@@ -17,9 +17,27 @@
   --glass-strong: rgba(255, 255, 255, 0.95);
 }
 
+html {
+  min-height: 100%;
+  background: linear-gradient(to bottom right, #e0c3fc, #8ec5fc);
+  background-attachment: fixed;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
   background: linear-gradient(to bottom right, #e0c3fc, #8ec5fc) !important;
   background-attachment: fixed;
+}
+
+@keyframes card-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+.animate-card-shake {
+  animation: card-shake 0.5s ease-in-out;
 }

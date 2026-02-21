@@ -28,6 +28,7 @@ export async function captureFragment(
 
   if (type === "link") {
     const url = content.trim();
+    let fetchedOk = false;
     try {
       const fetched = await fetchWithJina(url);
       title = fetched.title;
@@ -37,51 +38,82 @@ export async function captureFragment(
         title: fetched.title,
         originalTags: fetched.originalTags,
       });
-    } catch (e) {
-      // Jina 也失败：不显示“无法访问”，改为根据 URL 语义盲猜至少一个分类标签
-      const fallbackContent = `链接：${url}\n（该页面暂时无法抓取正文，已仅保存链接并根据链接智能推测标签。）`;
-      contentToStore = fallbackContent;
-      suggestedTags = await suggestTagsFromUrlOnly(url);
-      warning = "该页面暂时无法抓取正文，已根据链接智能推测标签并保存。";
+      fetchedOk = true;
+    } catch (_e) {
+      // 任何抓取/打标失败都不报错，仅保存标题+URL+标签
+    }
+    if (!fetchedOk) {
+      try {
+        const fullUrl = url.trim().startsWith("http") ? url.trim() : `https://${url.trim()}`;
+        const fallback = await fetch(fullUrl, { signal: AbortSignal.timeout(5000) });
+        const html = await fallback.text();
+        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+        title = titleMatch ? titleMatch[1].trim().slice(0, 200) : undefined;
+      } catch {
+        // ignore
+      }
+      if (!title) title = url.length > 60 ? url.slice(0, 60) + "…" : url;
+      contentToStore = "";
+      suggestedTags = (await suggestTagsFromUrlOnly(url)).slice(0, 3);
+      warning = "该页面暂时无法抓取正文，已仅保存标题与链接，可前往淬炼补充。";
     }
   } else {
     contentToStore = content.trim();
     suggestedTags = await suggestTags(contentToStore);
   }
 
-  const fragment: Pick<
-    Fragment,
-    "id" | "content" | "sourceType" | "sourceUrl" | "tagIds" | "status" | "createdAt" | "updatedAt" | "title"
-  > = {
-    id: generateId(),
-    content: contentToStore,
-    sourceType: type === "link" ? "link" : "text",
-    sourceUrl: type === "link" ? content.trim() : undefined,
-    tagIds: suggestedTags.map((t) => t.name),
+  const id = generateId();
+  const baseRow = {
+    id,
+    content: type === "link" ? "" : contentToStore,
+    source_type: type === "link" ? "link" : "text",
+    source_url: type === "link" ? content.trim() : null,
+    tag_ids: suggestedTags.map((t) => t.name),
     status: "inbox",
-    createdAt: now,
-    updatedAt: now,
-    title: title,
+    created_at: now,
+    updated_at: now,
+    title: type === "link" ? "" : (title ?? null),
   };
 
-  const { error } = await supabase.from("fragments").insert({
-    id: fragment.id,
-    content: fragment.content,
-    source_type: fragment.sourceType,
-    source_url: fragment.sourceUrl ?? null,
-    tag_ids: fragment.tagIds,
-    status: fragment.status,
-    created_at: fragment.createdAt,
-    updated_at: fragment.updatedAt,
-    title: fragment.title ?? null,
-  });
+  let insertRow: Record<string, unknown> = {
+    ...baseRow,
+    title: type === "link" ? (title ?? null) : baseRow.title,
+    content: contentToStore,
+  };
+
+  if (type === "link") {
+    insertRow = {
+      ...insertRow,
+      title: "",
+      content: "",
+      source_title: title ?? null,
+      source_content: contentToStore,
+    };
+  }
+
+  let { error } = await supabase.from("fragments").insert(insertRow);
+  if (error && (error.message?.includes("source_title") || error.message?.includes("source_content"))) {
+    insertRow = {
+      id,
+      content: contentToStore,
+      source_type: baseRow.source_type,
+      source_url: baseRow.source_url,
+      tag_ids: baseRow.tag_ids,
+      status: baseRow.status,
+      created_at: baseRow.created_at,
+      updated_at: baseRow.updated_at,
+      title: title ?? null,
+    };
+    const retry = await supabase.from("fragments").insert(insertRow);
+    error = retry.error;
+  }
 
   if (error) {
     throw new Error(`写入失败: ${error.message}`);
   }
 
   return {
-    fragmentId: fragment.id,
+    fragmentId: id,
     suggestedTags: suggestedTags.map((t) => ({ id: "", name: t.name })),
     warning,
   };

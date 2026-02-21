@@ -10,6 +10,8 @@ export interface AlchemyFragment {
   content: string;
   sourceType: string;
   sourceUrl: string | null;
+  sourceTitle?: string | null;
+  sourceContent?: string | null;
   tagIds: string[];
   title: string | null;
   createdAt: string;
@@ -27,6 +29,7 @@ interface AlchemyViewProps {
   onTimeRangeChange: (v: "all" | "3d" | "7d") => void;
   onArchive?: (id: string) => void;
   onDelete?: (id: string) => void;
+  onRefine?: (id: string) => void;
   emptyMessage?: string;
 }
 
@@ -36,6 +39,7 @@ export function AlchemyView({
   onTimeRangeChange,
   onArchive,
   onDelete,
+  onRefine,
   emptyMessage = "暂无近期碎片，切换时间范围或先去收件箱添加",
 }: AlchemyViewProps) {
   const filtered = useMemo(() => {
@@ -149,12 +153,15 @@ export function AlchemyView({
                       content={item.content}
                       sourceType={item.sourceType}
                       sourceUrl={item.sourceUrl}
+                      sourceTitle={item.sourceTitle}
+                      sourceContent={item.sourceContent}
                       tagIds={item.tagIds}
                       title={item.title}
                       createdAt={item.createdAt}
                       viewMode={"alchemy" as CardViewMode}
                       onDelete={onDelete}
                       onArchive={onArchive}
+                      onRefine={onRefine}
                     />
                   ))}
                 </AnimatePresence>

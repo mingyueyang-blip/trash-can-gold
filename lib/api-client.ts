@@ -36,6 +36,8 @@ export async function listFragmentsApi(params?: { q?: string; status?: string })
     content: string;
     sourceType: string;
     sourceUrl: string | null;
+    sourceTitle: string | null;
+    sourceContent: string | null;
     tagIds: string[];
     status: string;
     title: string | null;
@@ -64,4 +66,40 @@ export async function updateFragmentStatusApi(
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error ?? "更新失败");
+}
+
+export async function updateFragmentContentApi(id: string, content: string): Promise<void> {
+  const res = await fetch(`/api/fragments/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: headers(),
+    body: JSON.stringify({ content }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error ?? "更新失败");
+}
+
+export async function updateFragmentTitleContentApi(
+  id: string,
+  title: string,
+  content: string
+): Promise<void> {
+  const res = await fetch(`/api/fragments/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: headers(),
+    body: JSON.stringify({ title, content }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error ?? "更新失败");
+}
+
+export interface HeatmapDay {
+  date: string;
+  count: number;
+}
+
+export async function fetchHeatmapApi(): Promise<HeatmapDay[]> {
+  const res = await fetch("/api/stats/heatmap", { headers: headers() });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error ?? "请求失败");
+  return data as HeatmapDay[];
 }

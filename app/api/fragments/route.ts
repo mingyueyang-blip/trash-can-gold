@@ -22,6 +22,8 @@ export async function GET(request: NextRequest) {
         content: r.content,
         sourceType: r.source_type,
         sourceUrl: r.source_url,
+        sourceTitle: r.source_title ?? null,
+        sourceContent: r.source_content ?? null,
         tagIds: r.tag_ids ?? [],
         status: r.status,
         title: r.title,

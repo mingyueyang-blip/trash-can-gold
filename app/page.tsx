@@ -6,6 +6,7 @@ import {
   captureApi,
   listFragmentsApi,
   updateFragmentStatusApi,
+  updateFragmentContentApi,
 } from "@/lib/api-client";
 import { PasteModal } from "@/components/PasteModal";
 import { Toast } from "@/components/Toast";
@@ -14,15 +15,20 @@ import { MasonryGrid } from "@/components/MasonryGrid";
 import { Dock } from "@/components/Dock";
 import { AlchemyView } from "@/components/AlchemyView";
 import { SettingsView } from "@/components/SettingsView";
+import { LeftSidebar } from "@/components/LeftSidebar";
+import { RefinePanel } from "@/components/RefinePanel";
+import { StarmapView } from "@/components/StarmapView";
 
 type ModalState = "idle" | "processing" | "success" | "error";
-type ActiveTab = "inbox" | "alchemy" | "archive" | "settings";
+type ActiveTab = "inbox" | "alchemy" | "archive" | "settings" | "starmap";
 
 type FragmentItem = {
   id: string;
   content: string;
   sourceType: string;
   sourceUrl: string | null;
+  sourceTitle?: string | null;
+  sourceContent?: string | null;
   tagIds: string[];
   title: string | null;
   createdAt: string;
@@ -42,9 +48,13 @@ export default function Home() {
   const [toast, setToast] = useState({ visible: false, message: "", type: "success" as "success" | "error" });
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>("inbox");
+  const [refineOpen, setRefineOpen] = useState(false);
+  const [selectedFragmentId, setSelectedFragmentId] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<"all" | "3d" | "7d">("all");
   const [autoClearOn, setAutoClearOn] = useState(false);
   const autoClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [rightMenuOpen, setRightMenuOpen] = useState(false);
+  const rightMenuRef = useRef<HTMLDivElement>(null);
 
   const fetchInbox = useCallback(async () => {
     try {
@@ -94,6 +104,28 @@ export default function Home() {
   const filteredInbox = searchFilter(fragments);
   const filteredArchive = searchFilter(fragments);
 
+  const handleDockSelect = useCallback(
+    (id: string) => {
+      if (id === "refine") {
+        setSelectedFragmentId(filteredInbox[0]?.id ?? null);
+        setRefineOpen(true);
+      } else {
+        setActiveTab(id as ActiveTab);
+      }
+      setRightMenuOpen(false);
+    },
+    [filteredInbox]
+  );
+
+  useEffect(() => {
+    if (!rightMenuOpen) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (rightMenuRef.current && !rightMenuRef.current.contains(e.target as Node)) setRightMenuOpen(false);
+    };
+    document.addEventListener("click", onDocClick, true);
+    return () => document.removeEventListener("click", onDocClick, true);
+  }, [rightMenuOpen]);
+
   const refreshCurrent = useCallback(() => {
     if (activeTab === "inbox" || activeTab === "alchemy") fetchInbox();
     else if (activeTab === "archive") fetchArchive();
@@ -137,6 +169,33 @@ export default function Home() {
       }
     },
     []
+  );
+
+  const [starmapRefreshKey, setStarmapRefreshKey] = useState(0);
+  const [highlightFragmentId, setHighlightFragmentId] = useState<string | null>(null);
+
+  const handleSelectFragmentFromStarmap = useCallback((fragmentId: string, status: string) => {
+    setActiveTab(status === "archived" ? "archive" : "inbox");
+    setHighlightFragmentId(fragmentId);
+    if (status === "archived") fetchArchive();
+    else fetchInbox();
+  }, [fetchArchive, fetchInbox]);
+
+  useEffect(() => {
+    if (!highlightFragmentId) return;
+    const t = setTimeout(() => setHighlightFragmentId(null), 4000);
+    return () => clearTimeout(t);
+  }, [highlightFragmentId]);
+
+  const handleRefineSave = useCallback(
+    async (fragmentId: string, title: string, content: string) => {
+      const { updateFragmentTitleContentApi } = await import("@/lib/api-client");
+      await updateFragmentTitleContentApi(fragmentId, title, content);
+      showToast("已保存，卡片已更新", "success");
+      refreshCurrent();
+      setStarmapRefreshKey((k) => k + 1);
+    },
+    [refreshCurrent]
   );
 
   const onMoveOutFragment = useCallback(
@@ -265,8 +324,17 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#E0C3FC] to-[#8EC5FC]">
-      <main className="min-h-screen pb-32 md:pb-28 max-w-[800px] mx-auto px-4 sm:px-5 pt-6 sm:pt-8">
-        <div className="bg-white/40 backdrop-blur-md rounded-[24px] shadow-lg border border-white/50 p-6 mb-6">
+      <LeftSidebar />
+      <main className="relative z-10 min-h-screen pb-32 md:pb-28 mx-auto px-4 sm:px-5 pt-6 sm:pt-8 ml-[160px] md:ml-[220px] md:mr-0 max-w-[1200px]">
+        {activeTab === "starmap" ? (
+          <div className="rounded-[24px] overflow-hidden bg-white/10 backdrop-blur-xl border border-white/30 h-[80vh] min-h-[80vh] w-full">
+            <StarmapView
+              refreshTrigger={starmapRefreshKey}
+              onSelectFragment={handleSelectFragmentFromStarmap}
+            />
+          </div>
+        ) : (
+        <div className="bg-white/40 backdrop-blur-md rounded-[24px] shadow-lg border border-white/50 p-6 mb-6 min-h-[80vh] w-full">
           <div className="text-center mb-6">
             <h1 className="text-2xl sm:text-[32px] font-semibold text-[#2d3748]">
               炼金炉
@@ -285,7 +353,7 @@ export default function Home() {
             </div>
           )}
 
-          {(activeTab === "inbox" || activeTab === "alchemy") && (
+          {activeTab === "inbox" && (
           <>
             <motion.section
               className="mb-8"
@@ -296,7 +364,7 @@ export default function Home() {
               <textarea
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                placeholder="把你的想法、片段、灵感丢进炼金炉…"
+                placeholder="把你的想法、片段丢进炼金炉…"
                 className="w-full min-h-[180px] rounded-2xl p-5 resize-y focus:outline-none placeholder:text-[#a0aec0] text-[#2d3748] border-0"
                 style={{ background: "rgba(255,255,255,0.8)" }}
               />
@@ -349,48 +417,46 @@ export default function Home() {
         )}
 
         <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+          >
           {activeTab === "inbox" && (
-            <motion.div
-              key="inbox"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
-            >
+            <>
               <MasonryGrid
                 items={filteredInbox}
                 viewMode="inbox"
                 onDelete={onDeleteFragment}
                 onArchive={onArchiveFragment}
+                onRefine={(id) => {
+                  setSelectedFragmentId(id);
+                  setRefineOpen(true);
+                }}
+                highlightFragmentId={highlightFragmentId}
                 emptyMessage="暂无碎片，粘贴或输入内容后点击「炼金」开始收集"
               />
-            </motion.div>
+            </>
           )}
           {activeTab === "alchemy" && (
-            <motion.div
-              key="alchemy"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
-            >
+            <>
               <AlchemyView
                 fragments={filteredInbox}
                 timeRange={timeRange}
                 onTimeRangeChange={setTimeRange}
                 onArchive={onArchiveFragment}
                 onDelete={onDeleteFragment}
+                onRefine={(id) => {
+                  setSelectedFragmentId(id);
+                  setRefineOpen(true);
+                }}
               />
-            </motion.div>
+            </>
           )}
           {activeTab === "archive" && (
-            <motion.div
-              key="archive"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
-            >
+            <>
               <div className="flex justify-end mb-4">
                 <button
                   type="button"
@@ -446,25 +512,23 @@ export default function Home() {
                 viewMode="archive"
                 onDelete={onDeleteFragment}
                 onMoveOut={onMoveOutFragment}
+                highlightFragmentId={highlightFragmentId}
                 emptyMessage="暂无归档"
               />
-            </motion.div>
+            </>
           )}
           {activeTab === "settings" && (
-            <motion.div
-              key="settings"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
-            >
+            <>
               <SettingsView />
-            </motion.div>
+            </>
           )}
+          </motion.div>
         </AnimatePresence>
         </div>
+        )}
+      </main>
 
-        <div className="fixed right-4 bottom-24 md:bottom-auto md:right-5 md:top-1/2 md:-translate-y-1/2 flex flex-col gap-3 items-end md:items-center z-50">
+        <div ref={rightMenuRef} className="fixed right-4 bottom-24 md:bottom-auto md:right-5 md:top-1/2 md:-translate-y-1/2 flex flex-col gap-3 items-end md:items-center z-50">
           <motion.button
             type="button"
             aria-label="从剪贴板炼金"
@@ -477,17 +541,52 @@ export default function Home() {
           >
             <span className="text-2xl font-light leading-none md:text-xl">+</span>
           </motion.button>
-          <motion.button
-            type="button"
-            className="hidden md:flex w-12 h-12 rounded-full bg-white border border-gray-200 items-center justify-center text-gray-600 shadow-md"
-            whileHover={{ scale: 1.08, boxShadow: "0 8px 24px rgba(0,0,0,0.12)" }}
-            whileTap={{ scale: 0.95 }}
-            title="菜单"
-          >
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M2 4h4v4H2V4zm0 6h4v4H2v-4zm0 6h4v4H2v-4zm6-12h4v4H8V4zm0 6h4v4H8v-4zm0 6h4v4H8v-4zm6-12h4v4h-4V4zm0 6h4v4h-4v-4zm0 6h4v4h-4v-4z" />
-            </svg>
-          </motion.button>
+          <div className="relative">
+            <motion.button
+              type="button"
+              aria-label="菜单"
+              aria-expanded={rightMenuOpen}
+              onClick={(e) => {
+                e.stopPropagation();
+                setRightMenuOpen((v) => !v);
+              }}
+              className="flex w-12 h-12 rounded-full bg-white border border-gray-200 items-center justify-center text-gray-600 shadow-md"
+              whileHover={{ scale: 1.08, boxShadow: "0 8px 24px rgba(0,0,0,0.12)" }}
+              whileTap={{ scale: 0.95 }}
+              title="菜单"
+            >
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M2 4h4v4H2V4zm0 6h4v4H2v-4zm0 6h4v4H2v-4zm6-12h4v4H8V4zm0 6h4v4H8v-4zm0 6h4v4H8v-4zm6-12h4v4h-4V4zm0 6h4v4h-4v-4zm0 6h4v4h-4v-4z" />
+              </svg>
+            </motion.button>
+            {rightMenuOpen && (
+              <div className="absolute right-0 bottom-full mb-2 md:bottom-auto md:top-full md:mt-2 w-40 py-2 rounded-xl bg-white/95 backdrop-blur-md border border-white/50 shadow-lg flex flex-col">
+                {[
+                  { id: "inbox", label: "收件箱", icon: "📥" },
+                  { id: "alchemy", label: "炼金", icon: "✨" },
+                  { id: "archive", label: "归档", icon: "📦" },
+                  { id: "refine", label: "淬炼", icon: "🔥" },
+                  { id: "starmap", label: "星图", icon: "🌌" },
+                  { id: "settings", label: "设置", icon: "⚙️" },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => handleDockSelect(item.id)}
+                    className={`flex items-center gap-2 px-4 py-2.5 text-left text-sm transition-colors ${(refineOpen ? "refine" : activeTab) === item.id ? "bg-[#e9d8fd] text-[#805ad5]" : "text-[#2d3748] hover:bg-gray-100"}`}
+                  >
+                    <span>{item.icon}</span>
+                    <span>{item.label}</span>
+                    {item.id === "inbox" && inboxCount > 0 && (
+                      <span className="ml-auto min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-[#e53e3e] text-[10px] font-bold text-white px-1">
+                        {inboxCount > 99 ? "99+" : inboxCount}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <motion.button
             type="button"
             className="hidden md:flex w-12 h-12 rounded-full items-center justify-center text-white shadow-md bg-[#f687b3]"
@@ -516,12 +615,27 @@ export default function Home() {
         visible={toast.visible}
       />
 
+      <RefinePanel
+        open={refineOpen}
+        onClose={() => setRefineOpen(false)}
+        fragment={
+          (() => {
+            const list = activeTab === "archive" ? filteredArchive : filteredInbox;
+            const selected = selectedFragmentId
+              ? list.find((f) => f.id === selectedFragmentId)
+              : list[0];
+            return selected ?? null;
+          })()
+        }
+        allFragments={activeTab === "archive" ? filteredArchive : filteredInbox}
+        onSave={handleRefineSave}
+      />
+
       <Dock
-        activeId={activeTab}
-        onSelect={(id) => setActiveTab(id as ActiveTab)}
+        activeId={refineOpen ? "refine" : activeTab}
+        onSelect={handleDockSelect}
         inboxCount={inboxCount}
       />
-      </main>
     </div>
   );
 }

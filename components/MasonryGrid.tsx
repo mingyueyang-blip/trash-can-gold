@@ -10,6 +10,8 @@ interface Item {
   content: string;
   sourceType: string;
   sourceUrl: string | null;
+  sourceTitle?: string | null;
+  sourceContent?: string | null;
   tagIds: string[];
   title: string | null;
   createdAt: string;
@@ -22,6 +24,8 @@ interface MasonryGridProps {
   onDelete?: (id: string) => void;
   onArchive?: (id: string) => void;
   onMoveOut?: (id: string) => void;
+  onRefine?: (id: string) => void;
+  highlightFragmentId?: string | null;
   emptyMessage?: string;
 }
 
@@ -31,6 +35,8 @@ export function MasonryGrid({
   onDelete,
   onArchive,
   onMoveOut,
+  onRefine,
+  highlightFragmentId = null,
   emptyMessage = "暂无碎片，粘贴或输入内容后点击「炼金」开始收集",
 }: MasonryGridProps) {
   if (items.length === 0) {
@@ -54,6 +60,8 @@ export function MasonryGrid({
             content={item.content}
             sourceType={item.sourceType}
             sourceUrl={item.sourceUrl}
+            sourceTitle={item.sourceTitle}
+            sourceContent={item.sourceContent}
             tagIds={item.tagIds}
             title={item.title}
             createdAt={item.createdAt}
@@ -61,6 +69,8 @@ export function MasonryGrid({
             onDelete={onDelete}
             onArchive={onArchive}
             onMoveOut={onMoveOut}
+            onRefine={onRefine}
+            isHighlighted={highlightFragmentId === item.id}
           />
         ))}
       </AnimatePresence>

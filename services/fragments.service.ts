@@ -8,6 +8,8 @@ export interface FragmentRow {
   content: string;
   source_type: string;
   source_url: string | null;
+  source_title?: string | null;
+  source_content?: string | null;
   tag_ids: string[] | null;
   status: string;
   title: string | null;
@@ -62,6 +64,31 @@ export async function updateFragmentStatus(
   const { error } = await supabase
     .from("fragments")
     .update({ status, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+/** 更新碎片正文（淬炼保存） */
+export async function updateFragmentContent(
+  id: string,
+  content: string
+): Promise<void> {
+  const { error } = await supabase
+    .from("fragments")
+    .update({ content, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+/** 更新碎片标题与正文（淬炼保存，用户写的） */
+export async function updateFragmentTitleContent(
+  id: string,
+  title: string,
+  content: string
+): Promise<void> {
+  const { error } = await supabase
+    .from("fragments")
+    .update({ title, content, updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) throw new Error(error.message);
 }

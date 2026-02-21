@@ -6,6 +6,8 @@ const items = [
   { id: "inbox", label: "收件箱", icon: "📥" },
   { id: "alchemy", label: "炼金", icon: "✨" },
   { id: "archive", label: "归档", icon: "📦" },
+  { id: "refine", label: "淬炼", icon: "🔥" },
+  { id: "starmap", label: "星图", icon: "🌌" },
   { id: "settings", label: "设置", icon: "⚙️" },
 ];
 
@@ -20,18 +22,19 @@ export function Dock({ activeId = "inbox", onSelect, inboxCount = 0 }: DockProps
   const showBadge = inboxCount > 0;
   return (
     <motion.nav
-      className="fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:bottom-6 md:-translate-x-1/2 z-40 flex items-center justify-center gap-2 px-4 py-3 pt-3 rounded-t-[24px] md:rounded-[24px] bg-white/40 backdrop-blur-md shadow-lg border-t border-white/50 md:border md:border-white/50"
+      className="fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:bottom-6 md:-translate-x-1/2 z-[60] flex items-center px-4 py-3 pt-3 rounded-t-[24px] md:rounded-[24px] bg-white/40 backdrop-blur-md shadow-lg border-t border-white/50 md:border md:border-white/50 overflow-x-auto overflow-y-hidden"
       style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}
       initial={{ y: 20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ delay: 0.2 }}
     >
+      <div className="flex items-center gap-2 min-w-max md:mx-auto">
       {items.map((item) => (
         <button
           key={item.id}
           type="button"
           onClick={() => onSelect?.(item.id)}
-          className="relative flex flex-col items-center gap-1 min-w-[56px] py-1 rounded-xl transition-transform hover:scale-110 active:scale-95"
+          className="relative flex flex-col items-center gap-1 min-w-[56px] flex-shrink-0 py-1 rounded-xl transition-transform hover:scale-110 active:scale-95"
         >
           <span
             className="text-xl w-9 h-9 flex items-center justify-center rounded-lg transition-colors"
@@ -57,6 +60,7 @@ export function Dock({ activeId = "inbox", onSelect, inboxCount = 0 }: DockProps
           </span>
         </button>
       ))}
+      </div>
     </motion.nav>
   );
 }
